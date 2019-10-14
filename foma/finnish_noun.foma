@@ -1,0 +1,107 @@
+# Задаем буквы по категориям, которые в дальнейшем планируем использовать: гласные/согласные, а гласные еще и по ряду.
+define Consonant b | c | d | f | g | h | j | k | l | m | n | p | q | r | s | t | v | w | x | z ;
+define FrontVowel ä | ö | y ;
+define NeutralVowel e | i ;
+define BackVowel a | o | u ;
+define Vowel FrontVowel | NeutralVowel | BackVowel | A | E ;
+define Letter Vowel | Consonant ;
+
+# Задаем грамматические категории: падежи и числа
+define Case "+Nom" | "+Gen" | "+Part" | "+In" | "+All" | "+Abl" | "+Ela" | "+Ill" ;
+define Number "+Sg" | "+Pl" ; 
+
+# Задаем разные типы основ и саму основу как совокупность букв
+define FrontStem [Consonant* [ FrontVowel | NeutralVowel ] ]+ Consonant* ;
+define BackStem [Consonant* [ BackVowel | NeutralVowel ] ]* [Consonant* BackVowel] [Consonant* [ BackVowel | NeutralVowel ] ]* Consonant* ;
+define Stem Letter+ ;
+
+define Input Stem Number Case ;
+
+# Определим номинативы, они различаются только по числам
+define NomPl "+Pl" "+Nom" -> "^" t || _ ;
+define NomSg "+Sg" "+Nom" -> "^" || _ ;
+define Nominatives NomPl .o. NomSg ;
+
+# Генетивы различаются по концу основы: -den если на конце две гласные, -en иначе
+define GenDen "+Gen" -> d e n || Vowel Vowel "+Pl" _ ;
+define Gen "+Gen" -> E n || _ ;
+define Genetive GenDen .o. Gen ;
+
+# Партитив различается похожим образом: tA если на две V или на C
+define PartTa "+Part" -> t A || [ Consonant Vowel Vowel | Consonant ] Number _ ;
+define PartA "+Part" -> A || _ ;
+
+# Начнем с -seen, для этого введем повторяюшуюся гласную, остальные формы sg по аналогии
+define DoubleVowel a a | e e | o o | u u | ä ä | ö ö | y y ;
+define IllSeen "+Ill" -> s e e n || Vowel Consonant+ DoubleVowel "+Sg" _ ;
+define IllHvnSg "+Ill" -> h V n || \Vowel* Vowel^{1,2} "+Sg" _ ;
+define IllVnSg "+Ill" -> V n || "+Sg" _ ;
+
+# Заменим V на последнюю гласную основы
+define Illa V -> a || a "+Sg" h^{0,1} _ ;
+define Ille V -> e || e "+Sg" h^{0,1} _ ;
+define Illo V -> o || o "+Sg" h^{0,1} _ ;
+define Illi V -> i || i "+Sg" h^{0,1} _ ;
+define Illö V -> ö || ö "+Sg" h^{0,1} _ ;
+define Illä V -> ä || ä "+Sg" h^{0,1} _ ;
+define Illy V -> y || y "+Sg" h^{0,1} _ ;
+define Illu V -> u || u "+Sg" h^{0,1} _ ;
+
+define IllV Illa .o. Ille .o. Illo .o. Illi .o. Illö .o. Illä .o. Illy .o. Illu ;
+
+# соберем вместе иллатив единственного числа
+define IllSg IllSeen .o. IllHvnSg .o. IllVnSg .o. IllV ;
+
+# чередование во множественном числе зависит от конечной буквы основы
+define IllPlV "+Ill" -> h i n || [ o | ö | u | y ] "+Pl" _ ;
+define IllPlC "+Ill" -> i n || [ i | ä | a | Consonant ] "+Pl" _ ;
+
+# финальные этапы сборки иллатива
+define IllPl IllPlV .o. IllPlC ;
+
+define Illative IllSg .o. IllPl ;
+
+define SimpleLocativeCases "+In" -> s s A , "+All" -> l l A , "+Abl" -> l t A , "+Ela" -> s t A || _ ;
+
+define LocativeCases SimpleLocativeCases .o. Illative ;
+
+define OtherCases PartTa .o. PartA .o. LocativeCases ;
+
+# Происходит реализация чисел путем присоединения значка ^ как символа конца основы и чередование гласных
+define Sg "+Sg" -> "^" || _ ;
+define OmitA ä -> 0, i -> 0 || _ "+Pl" ;
+define Ai2Oi a -> o || [ a | e | i ] Vowel* Consonant+ _ "+Pl" ;
+define Ai2i a -> 0 || [ o | u ] Vowel* Consonant+ _ "+Pl" ;
+define OmitFirst Vowel -> 0 || _ Vowel "+Pl" Consonant ;
+define Pl "+Pl" -> "^" i || _ ;
+
+define NumberInfl Sg .o. OmitA .o. Ai2i .o. Ai2Oi .o. OmitFirst .o. Pl ;
+
+# Происходит замена А на подобающую основе с т.з. ряда гласную и добавление j
+define JotPl i -> j || Vowel "^"* _ "^"* Vowel ;
+define HarmonyBack A -> a || BackStem "^" Letter* _ ;
+define HarmonyFront A -> ä || FrontStem "^" Letter* _ ;
+
+define Phonetics JotPl .o. HarmonyBack .o. HarmonyFront ;
+
+# Задается чередование согласных 
+define DoublePTK p p -> p , t t -> t , k k -> k || Letter _ "^"* Vowel "^"* Consonant [ .#. | Consonant ] ;
+define SingleP p -> v || Vowel _ "^"* Vowel "^"* Consonant [ .#. | Consonant ] ;
+define SingleTK t -> d , k -> 0 || Letter _ "^"* Vowel "^"* Consonant [ .#. | Consonant ] ; 
+define TwoLetter m p -> m m , n t -> n n , n k -> n g , l t -> l l , r t -> r r || Letter _ "^"* Vowel "^"* Consonant [ .#. | Consonant ] ;
+define ThreeLetter l k e -> l j e , r k e -> r j e , h k e -> h j e , u k u -> u v u || Letter _ "^"* Consonant [ .#. | Consonant ] ;
+define N2M i n -> i m , t ö n -> t t ö m || _ "^" Vowel ;
+define EOmit E -> 0 || Vowel "^" _ ;
+define EReal E -> e || _ ;
+
+define Alternations N2M .o. EOmit .o. EReal .o. ThreeLetter .o. TwoLetter .o. SingleP .o. SingleTK .o. DoublePTK ;
+
+# Собираем все изменения, вызванные склонением
+define Affixes Nominatives .o. Genetive .o. OtherCases .o. NumberInfl .o. Alternations .o. Phonetics ;
+
+# Убираем вспомогательный знак конца основы
+define Cleanup "^" -> 0 || _ ;
+
+# Собирам главную функцию
+define Grammar Input .o. Affixes .o. Cleanup ;
+push Grammar
